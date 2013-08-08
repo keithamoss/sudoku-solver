@@ -1,4 +1,4 @@
-package sudoku;
+package sudsolv;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -6,38 +6,37 @@ import java.awt.FlowLayout;
 import java.awt.GridLayout;
 
 import java.awt.Font;
-import javax.swing.JOptionPane;
-import javax.swing.JDialog;
 import java.awt.event.*;
+import java.text.NumberFormat;
 
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
+import javax.swing.JFormattedTextField;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
+import javax.swing.text.NumberFormatter;
 
 public class SudokuGUI extends JFrame {
-    // Dimensions config
     final int rows = 9;
     final int columns = 9;
-    final int width = 500;
-    final int height = 500;
+    final int width = 600;
+    final int height = 600;
     
-    // Buttons initialisation
+    JButton jbtnStart = new JButton("Start");
     JButton jbtnSolve = new JButton("Solve");
-    JButton jbtnClear = new JButton("Clear");
+    JButton jbtnNewGame = new JButton("New Game");
+    JButton jbtnReset = new JButton("Reset");
     
-    final JTextField[][] subPanels = new JTextField[rows][columns];
+    final JFormattedTextField[][] textfields = new JFormattedTextField[rows][columns];
     final JPanel GuiPanel = new JPanel(new GridLayout(rows, columns));
+    SudokuPlayer player = null;
     
     public SudokuGUI() {
         super("Sudoku Solver");
         
         // Init a panel to hold the 9x9 grid
-//        final JPanel GuiPanel = new JPanel(new GridLayout(rows, columns));
         setSize(width, height);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         add(GuiPanel);
@@ -51,62 +50,87 @@ public class SudokuGUI extends JFrame {
         Border thickCornerBorder = BorderFactory.createMatteBorder(3, 3, 1, 1, Color.BLACK);
         GuiPanel.setBorder(outerBorder);
         
-        // Init the textfield container and associated fonts
-//        final JTextField[][] subPanels = new JTextField[rows][columns];
-        Font font = new Font("SansSerif", Font.BOLD, 20);
+        // Initialise the NumberFormatter to limit textinputs to 1 - 9
+        NumberFormat format = NumberFormat.getInstance();
+        NumberFormatter formatter = new NumberFormatter(format);
+        formatter.setValueClass(Integer.class);
+        formatter.setMinimum(1);
+        formatter.setMaximum(9);
+        formatter.setCommitsOnValidEdit(true); // commits on each keystroke instead of when focus is lost
 
         // Initialise the grid
+        Font font = new Font("SansSerif", Font.BOLD, 20);
         for(int r = 0; r < rows; r++) {
             for(int c = 0; c < columns; c++) {
-                subPanels[r][c] = new JTextField("");
-                subPanels[r][c].setForeground(Color.BLACK);
-                subPanels[r][c].setFont(font);
-                subPanels[r][c].setHorizontalAlignment(JTextField.CENTER);
-
-                // Crossword-style colouring of the cells
-//                if((r/1 + c/1) % 2 == 0) {
-//                    subPanels[r][c].setBackground(Color.lightGray);
-//                }
-//				
-                /* There's probably a better way to do this */
+                textfields[r][c] = new JFormattedTextField(formatter);
+                textfields[r][c].setForeground(Color.BLACK);
+                textfields[r][c].setFont(font);
+                textfields[r][c].setHorizontalAlignment(JFormattedTextField.CENTER);
+                /*textfields[r][c].getDocument().addDocumentListener(new DocumentListener() {
+                    public void changedUpdate(DocumentEvent e) {
+                      
+                    }
+                    public void removeUpdate(DocumentEvent e) {
+                      
+                    }
+                    public void insertUpdate(DocumentEvent e) {
+                      
+                    }
+                });*/
+	
+                /* There's a better way to do this */
                 // Corner border (left + top) for the four cells at corners of the thick border
                 if((r == 3 && c == 3) || r == 6 && c == 6 || r == 3 && c == 6 || r == 6 && c == 3) {
-                    subPanels[r][c].setBorder(thickCornerBorder);
+                    textfields[r][c].setBorder(thickCornerBorder);
                 } else if(c == 3 || c == 6) {
                 // Vertical thick border
-                    subPanels[r][c].setBorder(thickVerticalBorder);
+                    textfields[r][c].setBorder(thickVerticalBorder);
                 } else if(r == 3 || r == 6) {
                 // Horizontal thick border
-                    subPanels[r][c].setBorder(thickHorizontalBorder);
+                    textfields[r][c].setBorder(thickHorizontalBorder);
                 } else {
                 // Standard border
-                    subPanels[r][c].setBorder(thinBorder);
+                    textfields[r][c].setBorder(thinBorder);
                 }
 
-                GuiPanel.add(subPanels[r][c]);
+                GuiPanel.add(textfields[r][c]);
             }
         } 
-	
-        
+
         // Events for control bar buttons
+        jbtnStart.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                startGame();
+            }
+        });
+        
         jbtnSolve.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                solve();
+                solveGame();
             }
         });
-        jbtnClear.addActionListener(new ActionListener() {
+        jbtnSolve.setEnabled(false);
+        
+        jbtnNewGame.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                clear();
+                newGame();
             }
         });
         
-        // Init a panel to hold the control bar
+        jbtnReset.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                resetGame();
+            }
+        });
+        jbtnReset.setEnabled(false);
+        
+        // Finally, init a panel to hold the control bar
         final JPanel ButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        ButtonPanel.setLayout(new BorderLayout());
+        ButtonPanel.add(jbtnStart);
+        ButtonPanel.add(jbtnNewGame);
         ButtonPanel.add(jbtnSolve);
-        ButtonPanel.add(jbtnClear);
+        ButtonPanel.add(jbtnReset);
         ButtonPanel.setBorder(new LineBorder(Color.lightGray));
-        ButtonPanel.setLayout(new BoxLayout(ButtonPanel, BoxLayout.X_AXIS));
         ButtonPanel.setLayout(new FlowLayout());
         add(ButtonPanel, BorderLayout.SOUTH);
         
@@ -114,44 +138,94 @@ public class SudokuGUI extends JFrame {
         setVisible(true);
     }
     
-    public void solve() {
-        int[][] numbers = get();
-        
-        // Magic goes here...
-//        int[][] solved_numbers = get();
-        
-        set(numbers);
-    }
-    
-    public void clear() {
+    private void startGame() {
         for (int r = 0; r < rows; r++)  {
             for (int c = 0; c < columns; c++) {
-                subPanels[r][c].setText("");
+                if(!textfields[r][c].getText().isEmpty()) {
+                    textfields[r][c].setEditable(false);
+                }
             }
+        }
+        
+        player = new SudokuPlayer(getGrid());
+        
+        jbtnStart.setEnabled(false);
+        jbtnSolve.setEnabled(true);
+        jbtnReset.setEnabled(true);
+    }
+    
+    private void solveGame() {
+        int[][] numbers = getGrid();
+        
+        for (int r = 0; r < rows; r++)  {
+            for (int c = 0; c < columns; c++) {
+                if(!textfields[r][c].getText().isEmpty()) {
+                    player.setCell(r, c, Integer.parseInt(textfields[r][c].getText()));
+                }
+            }
+        }
+        
+        player.solveGame();
+        setGrid(player.getGame());
+    }
+    
+    private void newGame() {
+        for (int r = 0; r < rows; r++)  {
+            for (int c = 0; c < columns; c++) {
+                textfields[r][c].setText("");
+                textfields[r][c].setEditable(true);
+            }
+        }
+        
+        player = null;
+        
+        jbtnStart.setEnabled(true);
+        jbtnSolve.setEnabled(false);
+        jbtnReset.setEnabled(false);
+    }
+    
+    private void resetGame() {
+        if(player instanceof SudokuPlayer) {
+            setGrid(player.getGame());
+            player.reset();
         }
     }
     
-    private int[][] get() {
-        String debug = "";
+    private int[][] getGrid() {
         int[][] numbers = new int[rows][columns];
         for (int r = 0; r < rows; r++)  {
             for (int c = 0; c < columns; c++) {
-                debug += subPanels[r][c].getText() + ", ";
-                if(!subPanels[r][c].getText().isEmpty()) {
-                    numbers[r][c] = Integer.parseInt(subPanels[r][c].getText());
+                if(!textfields[r][c].getText().isEmpty()) {
+                    numbers[r][c] = Integer.parseInt(textfields[r][c].getText());
                 }
             }
-            debug += "\r\n";
         }
-        JOptionPane.showMessageDialog(GuiPanel, "Hai!\r\n" + debug);
-        System.out.println(numbers);
+        
+//        String debug = "";
+//        for (int r = 0; r < rows; r++)  {
+//            for (int c = 0; c < columns; c++) {
+//                debug += numbers[r][c] + ", ";
+//            }
+//            debug += "\r\n";
+//        }
+//        JOptionPane.showMessageDialog(GuiPanel, "Hai!\r\n" + debug);
+//        System.out.println(numbers);
+        
         return numbers;
     }
     
-    private void set(int[][] numbers) {
+    private void setGrid(int[][] numbers) {
+        NumberFormatter formatter = (NumberFormatter) textfields[0][0].getFormatter();
+        int min_value = (int)formatter.getMinimum();
+        int max_value = (int)formatter.getMaximum();
+        
         for (int r = 0; r < rows; r++)  {
             for (int c = 0; c < columns; c++) {
-                subPanels[r][c].setText(Integer.toString(numbers[r][c]));
+                if(numbers[r][c] >= min_value && numbers[r][c] <= max_value) {
+                    textfields[r][c].setText(Integer.toString(numbers[r][c]));
+                } else {
+                    textfields[r][c].setText("");
+                }
             }
         }
     }
